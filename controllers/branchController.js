@@ -1,5 +1,21 @@
 const Branch = require('../models/branchModel');
 
+// Get a branch by name
+exports.getBranchByName = async (req, res) => {
+  // endpoint --> http://localhost:3000/api/branch?name=cse
+  const { name } = req.query; // Get the branch name from the query parameters
+  try {
+    const branch = await Branch.findOne({ name }); // Find the branch by its name
+    if (!branch) {
+      return res.status(404).json({ message: 'Branch not found' });
+    }
+    res.status(200).json(branch);
+  } catch (error) {
+    res.status(500).json({ message: 'Error retrieving branch', error: error.message });
+  }
+};
+
+
 // Create a new branch
 exports.createBranch = async (req, res) => {
   try {

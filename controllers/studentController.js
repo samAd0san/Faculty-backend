@@ -1,5 +1,25 @@
 const Student = require('../models/studentModel');  // Import the Student model
 
+// Get students by branch, year, semester, and section
+exports.getFilteredStudents = async (req, res) => {
+  try {
+    const { branch, year, semester, section } = req.query;
+
+    // Create a filter object to pass to MongoDB query
+    const filter = {};
+    if (branch) filter.branch = branch;
+    if (year) filter.currentYear = year;
+    if (semester) filter.currentSemester = semester;
+    if (section) filter.section = section;
+
+    const students = await Student.find(filter).populate('branch'); // Find with filter
+    res.status(200).json(students);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 // Create a new student
 exports.createStudent = async (req, res) => {
   try {

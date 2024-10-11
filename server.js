@@ -1,11 +1,14 @@
 const express = require('express');
 const connectDB = require('./config/db');
+const cors = require('cors');
 
 const studentRoutes = require('./routes/studentRoutes');
 const branchRoutes = require('./routes/branchRoutes');
 
 const app = express();
 const PORT = 3000;
+
+app.use(cors());
 
 app.get('/', (req, res) => {
     res.status(200);
