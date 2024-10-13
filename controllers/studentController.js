@@ -2,12 +2,53 @@ const Student = require('../models/studentModel');
 const Attendance = require('../models/attendanceModel');
 const Subject = require('../models/subjectModel'); // Import Subject model
 
-// Create a new student
+// Create a new student along with attendance
 exports.createStudent = async (req, res) => {
   try {
-    const student = new Student(req.body);
-    await student.save();
-    res.status(201).json(student);
+    const { rollNo, name, branch, currentYear, currentSemester, section, history, attendance: attendanceData } = req.body;
+
+    // Create new student object
+    const newStudent = new Student({
+      rollNo,
+      name,
+      branch,
+      currentYear,
+      currentSemester,
+      section,
+      history,
+    });
+
+    // Check if attendance data is provided
+    if (attendanceData && attendanceData.length > 0) {
+      const attendanceRecords = await Promise.all(attendanceData.map(async (att) => {
+        const { subject, totalClasses, classesAttended, period } = att;
+
+        // Check if the subject exists
+        const subjectRecord = await Subject.findById(subject);
+        if (!subjectRecord) {
+          throw new Error(`Subject with ID ${subject} not found`);
+        }
+
+        // Create new attendance record for each attendance entry
+        const attendanceRecord = new Attendance({
+          student: newStudent._id,  // Link attendance to the student
+          subject,
+          totalClasses,
+          classesAttended,
+          period,
+        });
+
+        await attendanceRecord.save();
+        return attendanceRecord._id; // Return the created attendance ID
+      }));
+
+      // Assign the created attendance records to the student's attendance array
+      newStudent.attendance = attendanceRecords;
+    }
+
+    // Save the student with attendance records
+    await newStudent.save();
+    res.status(201).json(newStudent);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
