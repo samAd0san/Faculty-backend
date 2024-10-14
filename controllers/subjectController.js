@@ -23,11 +23,11 @@ exports.getAllSubjects = async (req, res) => {
 };
 
 // Get subjects by branch
-exports.getSubjectsByBranch = async (req, res) => {
+exports.getSubjectsByBranchYearSemester = async (req, res) => {
   try {
-    const { branch } = req.params; // Destructure branch from request parameters
-    const subjects = await Subject.find({ branch }); // Find subjects by branch name
-    if (subjects.length === 0) return res.status(404).json({ message: 'No subjects found for this branch' });
+    const { branch, year, semester } = req.params; // Destructure branch, year, and semester from request parameters
+    const subjects = await Subject.find({ branch, year, semester }); // Find subjects by branch, year, and semester
+    if (subjects.length === 0) return res.status(404).json({ message: 'No subjects found for this branch, year, and semester' });
     res.status(200).json(subjects);
   } catch (error) {
     res.status(500).json({ message: error.message });
