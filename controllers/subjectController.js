@@ -8,14 +8,26 @@ exports.createSubject = async (req, res) => {
     res.status(201).json(subject);
   } catch (error) {
     res.status(400).json({ message: error.message });
-    console.log(error)
+    console.log(error);
   }
 };
 
 // Get all subjects
 exports.getAllSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find({},{ __v:0});
+    const subjects = await Subject.find({}, { __v: 0 }).populate('branch', 'name'); // Populating branch name
+    res.status(200).json(subjects);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get subjects by branch
+exports.getSubjectsByBranch = async (req, res) => {
+  try {
+    const { branch } = req.params; // Destructure branch from request parameters
+    const subjects = await Subject.find({ branch }); // Find subjects by branch name
+    if (subjects.length === 0) return res.status(404).json({ message: 'No subjects found for this branch' });
     res.status(200).json(subjects);
   } catch (error) {
     res.status(500).json({ message: error.message });
