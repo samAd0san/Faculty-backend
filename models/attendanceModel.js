@@ -7,6 +7,8 @@ const attendanceSchema = new mongoose.Schema({
   totalClasses: { type: Number, required: true },
   classesAttended: { type: Number, required: true },
   period: { type: String, enum: ['15th', '30th'], required: true },
+  month: { type: String, required: true },  
+  year: { type: Number, required: true },
   date: { type: Date, default: Date.now }
 });
 
