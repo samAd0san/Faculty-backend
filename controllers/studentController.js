@@ -137,15 +137,20 @@ exports.createAttendance = async (req, res) => {
   }
 };
 
-// Get attendance records by month and year
-exports.getAttendanceByMonthAndYear = async (req, res) => {
-  const { month, year } = req.params;
+// Get attendance records by period, month, and year
+exports.getAttendanceByPeriodMonthYear = async (req, res) => {
+  const { month, year, period } = req.params;
 
   try {
-    const attendanceRecords = await Attendance.find({ month: month, year: year });
+    const attendanceRecords = await Attendance.find({
+      month: month,
+      year: year,
+      period: period,
+    });
+    
     res.json(attendanceRecords);
   } catch (error) {
-    console.error("Error fetching attendance:", error);
+    console.error("Error fetching attendance by period, month, and year:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

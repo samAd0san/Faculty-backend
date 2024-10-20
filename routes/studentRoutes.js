@@ -8,8 +8,8 @@ router.post('/attendance', studentController.createAttendance);
 // Get attendance records for a specific student
 router.get('/attendance/:rollNo', studentController.getAttendanceByStudent);
 
-// Get attendance records for a specific month and year
-router.get('/attendance/month/:month/year/:year', studentController.getAttendanceByMonthAndYear);
+// Get attendance records by month, year, and period
+router.get('/attendance/month/:month/year/:year/period/:period', studentController.getAttendanceByPeriodMonthYear);
 
 // Update attendance record
 router.put('/attendance/:id', studentController.updateAttendance);
