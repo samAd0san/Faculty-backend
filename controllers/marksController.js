@@ -69,6 +69,33 @@ exports.getMarks = async (req, res) => {
   }
 };
 
+// Get Marks for Students based on year, semester, section, and exam type
+exports.getMarksByClassAndExam = async (req, res) => {
+  const { year, semester, section, examType } = req.params;
+
+  try {
+    // Fetch marks for students in the given year, semester, section, and exam type
+    const marks = await Marks.find({
+      year,
+      semester,
+      section,
+      examType,
+    })
+      .populate("student", "name rollNo")
+      .populate("subject", "subjectName");
+
+    if (!marks.length) {
+      return res
+        .status(404)
+        .json({ message: "No marks found for the given filters" });
+    }
+
+    res.status(200).json(marks);
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving marks", error });
+  }
+};
+
 // Update Marks for a Specific Entry
 exports.updateMarks = async (req, res) => {
   const { id } = req.params; // ID of the marks entry to update
