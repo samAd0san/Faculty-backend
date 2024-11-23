@@ -3,7 +3,6 @@ const connectDB = require('./config/db');
 const cors = require('cors');
 
 const studentRoutes = require('./routes/studentRoutes');
-const branchRoutes = require('./routes/branchRoutes');
 const subjectRoutes = require('./routes/subjectRoutes');
 const marksRoutes = require('./routes/marksRoutes');
 
@@ -18,7 +17,6 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/students', studentRoutes);
-app.use('/api/branch', branchRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/marks', marksRoutes)
 
