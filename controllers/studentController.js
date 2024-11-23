@@ -105,7 +105,7 @@ exports.deleteStudent = async (req, res) => {
 // Create a new attendance record
 exports.createAttendance = async (req, res) => {
   try {
-    const { student: studentId, subject: subjectId, totalClasses, classesAttended, period } = req.body;
+    const { student: studentId, subject: subjectId, totalClasses, classesAttended, period, month, year } = req.body;
 
     // Check if the student exists
     const student = await Student.findById(studentId);
@@ -120,7 +120,9 @@ exports.createAttendance = async (req, res) => {
       subject: subjectId,
       totalClasses,
       classesAttended,
-      period
+      period,
+      month,
+      year,
     });
 
     await attendance.save();
@@ -132,6 +134,24 @@ exports.createAttendance = async (req, res) => {
     res.status(201).json(attendance);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+// Get attendance records by period, month, and year
+exports.getAttendanceByPeriodMonthYear = async (req, res) => {
+  const { month, year, period } = req.params;
+
+  try {
+    const attendanceRecords = await Attendance.find({
+      month: month,
+      year: year,
+      period: period,
+    });
+    
+    res.json(attendanceRecords);
+  } catch (error) {
+    console.error("Error fetching attendance by period, month, and year:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
