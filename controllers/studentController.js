@@ -1,3 +1,4 @@
+const moment = require('moment');
 const Student = require('../models/studentModel');
 const Attendance = require('../models/attendanceModel');
 const Subject = require('../models/subjectModel'); // Import Subject model
@@ -224,3 +225,79 @@ exports.getFilteredStudentsWithAttendance = async (req, res) => {
     console.log(error);
   }
 };
+
+// Get attendance between two dates
+exports.getAttendanceByDateRange = async (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  try {
+    // Parse start and end dates to calculate the periods and months
+    const start = moment(startDate, "DD/MM/YYYY");
+    const end = moment(endDate, "DD/MM/YYYY");
+
+    // Validate date format
+    if (!start.isValid() || !end.isValid()) {
+      return res.status(400).json({ message: "Invalid date format. Use DD/MM/YYYY." });
+    }
+
+    // Validate if the start date is not after the end date
+    if (start.isAfter(end)) {
+      return res.status(400).json({ message: "Start date cannot be after the end date." });
+    }
+
+    let periods = [];
+
+    // Loop through all months between start and end dates
+    let current = start.clone();
+    while (current.isSameOrBefore(end)) {
+      // Add "15th" for the first half of the month
+      if (current.date() <= 15 || current.isSame(start, 'day')) {
+        periods.push({ period: '15th', month: current.month() + 1, year: current.year() });
+      }
+
+      // Only add "30th" if we're not in the last month or if the end date is after the 15th
+      if (current.isBefore(end, 'month') || (current.isSame(end, 'month') && end.date() > 15)) {
+        const endOfMonth = current.endOf('month').date();
+        if (endOfMonth >= 30) { // Only push "30th" if the month has 30 days or more
+          periods.push({ period: '30th', month: current.month() + 1, year: current.year() });
+        }
+      }
+
+      // Move to the next month
+      current.add(1, 'month').startOf('month');
+    }
+
+    // Log calculated periods for debugging
+    console.log("Calculated Periods:", periods);
+
+    // Fetch attendance records based on precise periods, months, and years
+    const attendanceRecords = await Attendance.find({
+      $or: periods.map(p => ({
+        period: p.period,
+        month: p.month,
+        year: p.year
+      }))
+    });
+
+    // Check if no records found
+    if (!attendanceRecords.length) {
+      return res.status(404).json({ message: "No attendance records found for the specified date range." });
+    }
+
+    // Send back the attendance records
+    return res.status(200).json({ attendance: attendanceRecords });
+
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({ message: "Server error." });
+  }
+};
+
+
+
+
+
+
+
+
+

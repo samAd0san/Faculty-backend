@@ -17,6 +17,10 @@ router.put('/attendance/:id', studentController.updateAttendance);
 // Delete attendance record
 router.delete('/attendance/:id', studentController.deleteAttendance);
 
+// Fetch attendance records by date range
+// http://localhost:3000/api/students/attendance?startDate=01/09/2024&endDate=30/11/2024
+router.get('/attendance', studentController.getAttendanceByDateRange);
+
 // Get students by branch, year, semester, and section (filtered)
 router.get('/filtered', studentController.getFilteredStudentsWithAttendance);
 
