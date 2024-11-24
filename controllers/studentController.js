@@ -2,6 +2,7 @@ const moment = require('moment');
 const Student = require('../models/studentModel');
 const Attendance = require('../models/attendanceModel');
 const Subject = require('../models/subjectModel'); // Import Subject model
+const Marks = require('../models/marksModel');
 
 // Create a new student along with attendance
 exports.createStudent = async (req, res) => {
@@ -293,11 +294,52 @@ exports.getAttendanceByDateRange = async (req, res) => {
   }
 };
 
+// Get marks of all subjects of a student for PTM
+exports.getStudentMarks = async (req, res) => {
+  const { rollNo } = req.params;
 
+  try {
+    // Find the student by roll number
+    const student = await Student.findOne({ rollNo });
 
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
 
+    // Fetch the student's marks for CIE-1, SurpriseTest-1, and Assignment-1
+    const marks = await Marks.find({
+      student: student._id,
+      examType: { $in: ['CIE-1', 'SURPRISE TEST-1', 'ASSIGNMENT-1'] }
+    }).populate('subject', 'name'); // Populating subject name
 
+    if (!marks.length) {
+      return res.status(404).json({ message: "No marks found for the specified exams." });
+    }
 
+    // Structure the result by subject and exam type
+    const result = marks.reduce((acc, mark) => {
+      const subjectName = mark.subject.name;
+      if (!acc[subjectName]) {
+        acc[subjectName] = {};
+      }
+      acc[subjectName][mark.examType] = {
+        marks: mark.marks,
+        maxMarks: mark.maxMarks
+      };
+      return acc;
+    }, {});
 
+    // Return the structured marks data
+    return res.status(200).json({ 
+      student: student.name,
+      rollNo: student.rollNo,
+      year: student.currentYear,
+      semester: student.currentSemester,
+      section: student.section,
+      marks: result });
 
-
+  } catch (error) {
+    console.error("Error fetching student marks:", error);  // Log the error details
+    return res.status(500).json({ message: "Server error.", error: error.message });
+  }
+};

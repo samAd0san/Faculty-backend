@@ -33,6 +33,10 @@ router.post('/', studentController.createStudent);
 // Get a single student by roll number
 router.get('/:rollNo', studentController.getStudentByRollNo);
 
+// Get marks of all tests for a student by rollNo
+// http://localhost:3000/api/students/160921733078/marks
+router.get('/:rollNo/marks', studentController.getStudentMarks);
+
 // Update a student
 router.put('/:rollNo', studentController.updateStudent);
 
