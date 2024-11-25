@@ -227,11 +227,17 @@ exports.getFilteredStudentsWithAttendance = async (req, res) => {
   }
 };
 
-// Get attendance between two dates
-exports.getAttendanceByDateRange = async (req, res) => {
-  const { startDate, endDate } = req.query;
+// Get attendance of a student within a date range along with marks 
+exports.getStudentData = async (req, res) => {
+  const { rollNo } = req.params;  // Extract rollNo from the URL
+  const { startDate, endDate } = req.query;  // Extract startDate and endDate from query parameters
 
   try {
+    // Validate if rollNo, startDate, and endDate are provided
+    if (!rollNo || !startDate || !endDate) {
+      return res.status(400).json({ message: "Missing required parameters: rollNo, startDate, or endDate." });
+    }
+
     // Parse start and end dates to calculate the periods and months
     const start = moment(startDate, "DD/MM/YYYY");
     const end = moment(endDate, "DD/MM/YYYY");
@@ -246,47 +252,81 @@ exports.getAttendanceByDateRange = async (req, res) => {
       return res.status(400).json({ message: "Start date cannot be after the end date." });
     }
 
-    let periods = [];
+    // Fetch the student by rollNo
+    const student = await Student.findOne({ rollNo });
 
-    // Loop through all months between start and end dates
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Calculate the periods based on the provided date range
+    let periods = [];
     let current = start.clone();
     while (current.isSameOrBefore(end)) {
-      // Add "15th" for the first half of the month
       if (current.date() <= 15 || current.isSame(start, 'day')) {
         periods.push({ period: '15th', month: current.month() + 1, year: current.year() });
       }
 
-      // Only add "30th" if we're not in the last month or if the end date is after the 15th
       if (current.isBefore(end, 'month') || (current.isSame(end, 'month') && end.date() > 15)) {
         const endOfMonth = current.endOf('month').date();
-        if (endOfMonth >= 30) { // Only push "30th" if the month has 30 days or more
+        if (endOfMonth >= 30) {
           periods.push({ period: '30th', month: current.month() + 1, year: current.year() });
         }
       }
 
-      // Move to the next month
       current.add(1, 'month').startOf('month');
     }
 
-    // Log calculated periods for debugging
-    console.log("Calculated Periods:", periods);
-
-    // Fetch attendance records based on precise periods, months, and years
-    const attendanceRecords = await Attendance.find({
+    // Build the query for attendance based on periods
+    const query = {
+      student: student._id,
       $or: periods.map(p => ({
         period: p.period,
         month: p.month,
         year: p.year
       }))
+    };
+
+    // Fetch attendance data for the student based on the periods
+    const attendanceRecords = await Attendance.find(query).populate('subject', 'name _id');
+
+    // Fetch the marks data for the student
+    const marks = await Marks.find({
+      student: student._id,
+      examType: { $in: ['CIE-1', 'SURPRISE TEST-1', 'ASSIGNMENT-1'] }
+    }).populate('subject', 'name _id');
+
+    // Structure the marks data by subject with subjectId
+    const structuredMarks = marks.map(mark => ({
+      subjectId: mark.subject._id,
+      subjectName: mark.subject.name,
+      examType: mark.examType,
+      marks: mark.marks,
+      maxMarks: mark.maxMarks
+    }));
+
+    // Structure the attendance data by subject with subjectId
+    const structuredAttendance = attendanceRecords.map(record => ({
+      subjectId: record.subject._id,
+      subjectName: record.subject.name,
+      period: record.period,
+      totalClasses: record.totalClasses,
+      classesAttended: record.classesAttended,
+      month: record.month,
+      year: record.year
+    }));
+
+    // Combine both marks and attendance data in the response
+    return res.status(200).json({
+      studentId: student._id,
+      studentName: student.name,
+      rollNo: student.rollNo,
+      year: student.currentYear,
+      semester: student.currentSemester,
+      section: student.section,
+      marks: structuredMarks,
+      attendance: structuredAttendance
     });
-
-    // Check if no records found
-    if (!attendanceRecords.length) {
-      return res.status(404).json({ message: "No attendance records found for the specified date range." });
-    }
-
-    // Send back the attendance records
-    return res.status(200).json({ attendance: attendanceRecords });
 
   } catch (error) {
     console.error("Error:", error);
