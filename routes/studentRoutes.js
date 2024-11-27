@@ -17,6 +17,10 @@ router.put('/attendance/:id', studentController.updateAttendance);
 // Delete attendance record
 router.delete('/attendance/:id', studentController.deleteAttendance);
 
+// Get attendance of a student for all subjects within a date range
+// Example: http://localhost:3000/api/students/160921733078/attendance?startDate=01/09/2024&endDate=30/11/2024
+router.get('/:rollNo/data', studentController.getStudentData);
+
 // Get students by branch, year, semester, and section (filtered)
 router.get('/filtered', studentController.getFilteredStudentsWithAttendance);
 
@@ -28,6 +32,10 @@ router.post('/', studentController.createStudent);
 
 // Get a single student by roll number
 router.get('/:rollNo', studentController.getStudentByRollNo);
+
+// Get marks of all tests for a student by rollNo
+// http://localhost:3000/api/students/160921733078/marks
+router.get('/:rollNo/marks', studentController.getStudentMarks);
 
 // Update a student
 router.put('/:rollNo', studentController.updateStudent);

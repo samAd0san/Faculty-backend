@@ -1,6 +1,8 @@
+const moment = require('moment');
 const Student = require('../models/studentModel');
 const Attendance = require('../models/attendanceModel');
 const Subject = require('../models/subjectModel'); // Import Subject model
+const Marks = require('../models/marksModel');
 
 // Create a new student along with attendance
 exports.createStudent = async (req, res) => {
@@ -222,5 +224,162 @@ exports.getFilteredStudentsWithAttendance = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
     console.log(error);
+  }
+};
+
+// Get attendance of a student within a date range along with marks 
+exports.getStudentData = async (req, res) => {
+  const { rollNo } = req.params;  // Extract rollNo from the URL
+  const { startDate, endDate } = req.query;  // Extract startDate and endDate from query parameters
+
+  try {
+    // Validate if rollNo, startDate, and endDate are provided
+    if (!rollNo || !startDate || !endDate) {
+      return res.status(400).json({ message: "Missing required parameters: rollNo, startDate, or endDate." });
+    }
+
+    // Parse start and end dates to calculate the periods and months
+    const start = moment(startDate, "DD/MM/YYYY");
+    const end = moment(endDate, "DD/MM/YYYY");
+
+    // Validate date format
+    if (!start.isValid() || !end.isValid()) {
+      return res.status(400).json({ message: "Invalid date format. Use DD/MM/YYYY." });
+    }
+
+    // Validate if the start date is not after the end date
+    if (start.isAfter(end)) {
+      return res.status(400).json({ message: "Start date cannot be after the end date." });
+    }
+
+    // Fetch the student by rollNo
+    const student = await Student.findOne({ rollNo });
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Calculate the periods based on the provided date range
+    let periods = [];
+    let current = start.clone();
+    while (current.isSameOrBefore(end)) {
+      if (current.date() <= 15 || current.isSame(start, 'day')) {
+        periods.push({ period: '15th', month: current.month() + 1, year: current.year() });
+      }
+
+      if (current.isBefore(end, 'month') || (current.isSame(end, 'month') && end.date() > 15)) {
+        const endOfMonth = current.endOf('month').date();
+        if (endOfMonth >= 30) {
+          periods.push({ period: '30th', month: current.month() + 1, year: current.year() });
+        }
+      }
+
+      current.add(1, 'month').startOf('month');
+    }
+
+    // Build the query for attendance based on periods
+    const query = {
+      student: student._id,
+      $or: periods.map(p => ({
+        period: p.period,
+        month: p.month,
+        year: p.year
+      }))
+    };
+
+    // Fetch attendance data for the student based on the periods
+    const attendanceRecords = await Attendance.find(query).populate('subject', 'name _id');
+
+    // Fetch the marks data for the student
+    const marks = await Marks.find({
+      student: student._id,
+      examType: { $in: ['CIE-1', 'SURPRISE TEST-1', 'ASSIGNMENT-1'] }
+    }).populate('subject', 'name _id');
+
+    // Structure the marks data by subject with subjectId
+    const structuredMarks = marks.map(mark => ({
+      subjectId: mark.subject._id,
+      subjectName: mark.subject.name,
+      examType: mark.examType,
+      marks: mark.marks,
+      maxMarks: mark.maxMarks
+    }));
+
+    // Structure the attendance data by subject with subjectId
+    const structuredAttendance = attendanceRecords.map(record => ({
+      subjectId: record.subject._id,
+      subjectName: record.subject.name,
+      period: record.period,
+      totalClasses: record.totalClasses,
+      classesAttended: record.classesAttended,
+      month: record.month,
+      year: record.year
+    }));
+
+    // Combine both marks and attendance data in the response
+    return res.status(200).json({
+      studentId: student._id,
+      studentName: student.name,
+      rollNo: student.rollNo,
+      year: student.currentYear,
+      semester: student.currentSemester,
+      section: student.section,
+      marks: structuredMarks,
+      attendance: structuredAttendance
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    return res.status(500).json({ message: "Server error." });
+  }
+};
+
+// Get marks of all subjects of a student for PTM
+exports.getStudentMarks = async (req, res) => {
+  const { rollNo } = req.params;
+
+  try {
+    // Find the student by roll number
+    const student = await Student.findOne({ rollNo });
+
+    if (!student) {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Fetch the student's marks for CIE-1, SurpriseTest-1, and Assignment-1
+    const marks = await Marks.find({
+      student: student._id,
+      examType: { $in: ['CIE-1', 'SURPRISE TEST-1', 'ASSIGNMENT-1'] }
+    }).populate('subject', 'name'); // Populating subject name
+
+    if (!marks.length) {
+      return res.status(404).json({ message: "No marks found for the specified exams." });
+    }
+
+    // Structure the result by subject and exam type
+    const result = marks.reduce((acc, mark) => {
+      const subjectName = mark.subject.name;
+      if (!acc[subjectName]) {
+        acc[subjectName] = {};
+      }
+      acc[subjectName][mark.examType] = {
+        marks: mark.marks,
+        maxMarks: mark.maxMarks
+      };
+      return acc;
+    }, {});
+
+    // Return the structured marks data
+    return res.status(200).json({ 
+      student: student.name,
+      rollNo: student.rollNo,
+      year: student.currentYear,
+      semester: student.currentSemester,
+      section: student.section,
+      marks: result });
+
+  } catch (error) {
+    console.error("Error fetching student marks:", error);  // Log the error details
+    return res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
